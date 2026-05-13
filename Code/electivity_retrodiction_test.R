@@ -16,12 +16,41 @@ options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
 # Initialize ggplot2
-theme_set(theme_classic()+theme(text=element_text(size=14),strip.background=element_blank())+theme(text=element_text(family="Avenir")))
+theme_set(theme_classic()+
+            theme(strip.background=element_blank())+
+            theme(text=element_text(family="Avenir")))
 
 
 
 # Set working directory
-setwd("~/Desktop/Research/BrittleStarResting/Code/ELECTIVITY")
+setwd("~/Desktop/Research/BrittleStarResting/AWellNamedBeastie/Code")
+
+# Helper function
+reform <- function(fit) {
+  posterior <- fit %>% 
+    as.data.frame() %>%
+    mutate(draw=1:nrow(.)) %>%
+    melt(id="draw") %>% 
+    mutate(
+      parameter = gsub("\\[[0-9]*\\]","",variable),
+      index = as.numeric(gsub("[a-zA-Z_]*\\[", "", gsub("\\]", "", variable))),
+      variable = NULL,
+      index_draw = paste0(index,"_",draw)
+    ) %>%
+    select(parameter, value, index, index_draw) %>% 
+    reshape(
+      idvar="index_draw",
+      v.names="value",
+      timevar="parameter",
+      direction="wide"
+    ) %>% 
+    mutate(index_draw = NULL)
+  colnames(posterior) <- gsub("value\\.","",colnames(posterior))
+  return(posterior)
+}
+
+quant <- function(x) return((1-x)/2+x*c(0,1))
+get83 <- function(vector) return(as.vector(quantile(vector, probs=quant(.83))))
 
 
 ### GENERATE SIMULATION ###
@@ -63,7 +92,7 @@ for (modelrun in 1:NUMBER_OF_RUNS) {
   )
   
   # Save (or read in) simulation model output
-  simulation_model_path <- paste0("Retrodiction_output/simulation_run_",modelrun,".rds")
+  simulation_model_path <- paste0("../Retrodiction/simulation_",modelrun,".rds")
   # if (FALSE)
     saveRDS(sim, simulation_model_path)
   if (FALSE)
@@ -109,7 +138,7 @@ for (modelrun in 1:NUMBER_OF_RUNS) {
   
   # Save (or read in) model output
   # model_path <- paste0("Model_outputs/model1_m1v",modelversion,"_on_model1_data1_r",modelrun,".rds") 
-  analysis_model_path <- paste0("Retrodiction_output/analysis_run_",modelrun,".rds")
+  analysis_model_path <- paste0("../Retrodiction/analysis_",modelrun,".rds")
   # if (FALSE)
     saveRDS(fit, analysis_model_path)
   if (FALSE)
@@ -182,10 +211,10 @@ retrodiction %>%
   tally %>% 
   # filter(!real.in.83) %>%
   mutate(percent.wrong=100*n/NUMBER_OF_RUNS) %>% View
-# if (FALSE)
-  write.csv(retrodiction,"Retrodiction_output/retrodiction_results.csv",row.names=F)
 if (FALSE)
-  retrodiction <- read.csv("Retrodiction_output_RUN1_50times/retrodiction_results.csv")
+  write.csv(retrodiction,"../Retrodiction/retrodiction_results.csv",row.names=F)
+if (FALSE)
+  retrodiction <- read.csv("../Retrodiction/retrodiction_results.csv")
 
 retrodiction_annot <- retrodiction %>% 
   mutate(
@@ -214,12 +243,12 @@ retrodiction_annot %>%
   geom_vline(xintercept=0,linetype="dashed",color="#666666")+
   geom_hline(yintercept=0,linetype="dashed",color="#666666")+
   # labs(x="Real parameter value",y="Estimated parameter value (with 83% CI)")+
-  labs(x="Real electivity",y="Estimated electivity")+
+  labs(x="Input electivity",y="Model-estimated electivity")+
   scale_colour_manual(values=c("#FF6542","#648E90","#272727"))+
-  theme(legend.position="none")+
+  theme(legend.position="none",text=element_text(family="Avenir",size=16))+
   geom_smooth(aes(x=real,y=med),method="lm",inherit.aes = F,color="#272727",fill="#272727",linetype="solid")
 if (FALSE)
-  ggsave("Retrodiction_output_RUN1_50times/retrodiction_output2.jpeg",width=6,height=6,units="in")
+  ggsave("../Figures/retrodiction_output.jpeg",width=6,height=6,units="in")
   
   
 retrodiction_annot %>% 
@@ -241,13 +270,15 @@ retrodiction_annot %>%
     Upper=Slope+SE
   )
 
-lm.fit <- retrodiction_annot %>% 
-  brm(med~real,data=.,iter=2000,warmup=1000,seed=42)
+# lm.fit <- retrodiction_annot %>% 
+#   brm(med~real,data=.,iter=2000,warmup=1000,seed=42)
 lm.fit %>% as.data.frame %>% View
 retrodiction_annot %>%
   mutate(diff=real-med) %>% 
   # ggdens(diff)
-  pull(diff) %>% sd
+  pull(diff) %>%
+  # mean
+  sd
 
 retrodiction_annot %>%
   # filter(posterior!="zero") %>% 
