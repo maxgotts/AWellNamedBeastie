@@ -154,7 +154,10 @@ ggplot(occ.abu, aes(x=Cover,y=Occupancy,group=as.factor(Electivity),color=Substr
     legend.position="none",
     strip.text=element_text(face="bold"),
     strip.background=element_blank(),
-    axis.line = element_blank()
+    axis.line = element_blank(),
+    # axis.text.x=element_text(hjust=c(0,1))
+    panel.spacing.x = unit(6.5, "mm"),
+    plot.margin = unit(c(5.5, 20, 5.5, 5.5), "pt")
   )+
   annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf,linewidth=1)+
   annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf,linewidth=1)+
